@@ -1,7 +1,7 @@
 pipeline {
 
   environment {
-    dockerimagename = "kparun/nodeapp"
+    DOCKERHUB_CREDENTIALS = credentials('dockerhub')
     dockerImage = ""
   }
 
@@ -15,27 +15,21 @@ pipeline {
       }
     }
 
-    stage('Build image') {
-      steps{
-        script {
-          dockerImage = docker.build dockerimagename
-        }
+    stage("Build docker image"){
+      steps {
+        sh 'docker build -t kparun/nodeapp:$BUILD_NUMBER .'
       }
     }
-
-    stage('Pushing Image') {
-      environment {
-               registryCredential = 'docker'
-           }
-      steps{
-        script {
-          docker.withRegistry( 'https://registry.hub.docker.com', registryCredential ) {
-            dockerImage.push("latest")
-          }
-        }
+    stage("Login to docker hub"){
+      steps {
+        sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
       }
     }
-
+    stage("Docker push"){
+      steps {
+        sh 'docker push kparun/nodeapp:$BUILD_NUMBER'
+      }
+    }
     stage('Deploying App to Kubernetes') {
       steps {
         script {
